@@ -1,0 +1,52 @@
+{
+  "name": "comfy-model-studio",
+  "version": "0.22.1",
+  "private": true,
+  "description": "模序 · 本地模型管理、直接下载与配方编排",
+  "author": "Local Studio",
+  "type": "module",
+  "main": "desktop/main.mjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "start": "electron .",
+    "pack": "npm run build && electron-builder --win --x64 --dir"
+  },
+  "dependencies": {
+    "dompurify": "^3.3.0",
+    "lucide-react": "1.65.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "electron": "43.4.1",
+    "electron-builder": "26.18.0",
+    "linkedom": "^0.18.14",
+    "typescript": "^5.9.3",
+    "vite": "8.3.5"
+  },
+  "build": {
+    "appId": "local.comfymodelstudio.desktop",
+    "productName": "模序",
+    "asar": true,
+    "electronDist": "node_modules/electron/dist",
+    "files": [
+      "dist/**/*",
+      "desktop/**/*",
+      "package.json",
+      "assets/**/*"
+    ],
+    "directories": {
+      "output": "release-0.22.1"
+    },
+    "win": {
+      "target": "dir",
+      "signExecutable": false,
+      "icon": "assets/icon.ico"
+    }
+  },
+  "license": "UNLICENSED"
+}

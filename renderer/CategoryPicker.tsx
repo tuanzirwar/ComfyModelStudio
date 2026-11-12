@@ -1,0 +1,9 @@
+import { useState } from 'react';
+import { Plus, Check, Tags } from 'lucide-react';
+import './categories.css';
+export function CategoryPicker({ value = [], categories = [], onChange }: { value?: string[]; categories?: string[]; onChange: (value: string[]) => void }) {
+  const [draft, setDraft] = useState(''), [error, setError] = useState(''), [adding, setAdding] = useState(false);
+  const labels = [...new Set([...categories, ...value])];
+  const add = async () => { if (!draft.trim() || adding) return; setAdding(true); setError(''); try { const name = await window.studio.call('lora-category:create', { name: draft.trim() }); onChange([...new Set([...value, name])]); setDraft(''); } catch (error: any) { setError(error.message); } finally { setAdding(false); } };
+  return <section className="category-picker" aria-label="LoRA 二级标签"><div className="category-heading"><Tags size={14}/><strong>我的二级标签</strong><span>可多选 · 默认无分类</span></div><div className="category-options">{labels.length ? labels.map(label => <button key={label} type="button" className={value.includes(label) ? 'selected' : ''} aria-pressed={value.includes(label)} onClick={() => onChange(value.includes(label) ? value.filter(item => item !== label) : [...value, label])}>{value.includes(label) && <Check size={12}/>} {label}</button>) : <p>还没有自定义标签，创建“姿势”“画风”等分类后即可复用。</p>}</div><div className="category-add"><input aria-label="新建 LoRA 二级标签" maxLength={40} placeholder="输入新的二级标签…" value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void add(); } }}/><button className="button" type="button" disabled={!draft.trim() || adding} onClick={add}><Plus size={13}/>{adding ? '创建中…' : '新建并选中'}</button></div>{value.length > 0 && <button type="button" className="category-clear" onClick={() => onChange([])}>清空选择，设为未分类</button>}{error && <p className="inline-error">{error}</p>}</section>;
+}

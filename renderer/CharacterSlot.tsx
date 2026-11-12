@@ -1,0 +1,21 @@
+import {PromptBlocks} from './PromptBlocks';
+import { useState } from 'react';
+import { ChevronDown, UserRound, X } from 'lucide-react';
+import { LoraList } from './LoraList';
+import { initializeLoraPrompts, splitRecipePrompt, isCharacterModel, updateCharacterSlot, characterSlotIssues } from '../desktop/character-slot.mjs';
+import './character-slot.css';
+type Any=Record<string,any>;
+function RoleAvatar({model}:any){const[failed,setFailed]=useState(false);return <span className="character-avatar">{model?.coverPath&&!failed?<img src={`cms-media://asset/${encodeURIComponent(model.id)}/cover?v=${model.coverRevision||model.modified||0}`} alt="" onError={()=>setFailed(true)}/>:<UserRound size={16}/>}</span>;}
+export function CharacterSlot({plan,models,recipes,onChange,run,notify}:any){
+  const [open,setOpen]=useState(false),slot=splitRecipePrompt(plan.characterSlot||{enabled:false,loras:[],prompt:'',managed:[]},models);
+  const roles=slot.loras.map((entry:Any)=>models.find((model:Any)=>model.id===entry.modelId));
+  const characterCategory=models.flatMap((model:Any)=>model.loraCategories||[]).find((tag:string)=>/^(角色|人物|character)$/i.test(tag));
+  const hasCharacters=models.some(isCharacterModel),enabled=plan.items.filter((item:Any)=>item.enabled);
+  const bases=[...new Set(enabled.map((item:Any)=>{const recipe=recipes.find((row:Any)=>row.id===item.recipeId);return models.find((model:Any)=>model.id===(item.overrides?.checkpointId||recipe?.checkpointId))?.baseModel;}).filter(Boolean))];
+  const issues=[...new Set(enabled.flatMap((item:Any)=>{const recipe=recipes.find((row:Any)=>row.id===item.recipeId);return characterSlotIssues({...recipe,...item.overrides},slot,models);} ))] as string[];
+  const change=(patch:Any)=>{try{onChange(updateCharacterSlot({...plan,characterSlot:slot},{...patch,promptMode:'blocks-v1'},models,recipes));}catch(error:any){notify(error.message,true);}};
+  return <section className={`character-slot ${slot.enabled?'active':''}`} aria-label="全局角色区域"><header><span className="character-symbol"><UserRound size={18}/></span><div className="character-heading"><strong>全局角色</strong><small>{slot.enabled?`统一作用于 ${enabled.length} 个启用任务 · ${roles.length?roles.map((model:Any)=>model?.name||'缺失的角色').join(' / '):'当前不使用角色 LoRA'}`:'在这里统一替换所有节点的角色部分'}</small></div>{roles.length>0&&<div className="character-avatars">{roles.slice(0,3).map((model:Any,index:number)=><RoleAvatar key={`${model?.id}:${index}`} model={model}/>)}</div>}<button type="button" className={`toggle ${slot.enabled?'on':''}`} role="switch" aria-label="启用全局角色" aria-checked={slot.enabled} onClick={()=>{change({enabled:!slot.enabled});if(!slot.enabled&&!slot.loras.length)setOpen(true);}}><i/></button><button type="button" className="button character-expand" aria-expanded={open} onClick={()=>setOpen(!open)}>{open?'收起':slot.enabled?'编辑角色':'设置角色'}<ChevronDown size={14} style={{transform:open?'rotate(180deg)':undefined}}/></button></header>
+  {issues.length>0&&<p className="character-warning" role="alert">{issues.length} 项角色兼容性问题，请展开处理后再运行。</p>}
+  {open&&<div className="character-slot-body"><p className="character-help">每个角色的触发词与描述独立保存，统一替换全部节点中的角色板块。此处语法定义同时应用到全部启用节点的通用、角色、素材及负向提示词，节点预览同步显示替换结果；停用可恢复节点原始配置。</p><LoraList independentPrompts checkpointBase={bases.length===1?String(bases[0]):undefined} addLabel="加入全局角色" browseLabel="浏览角色 LoRA" models={models} loras={slot.loras} prompt={slot.prompt} initialCategory={characterCategory?`tag:${characterCategory}`:'all'} onChange={loras=>change({enabled:true,loras:initializeLoraPrompts(loras,models)})} onPromptChange={prompt=>change({enabled:true,prompt})} run={run}/><PromptBlocks recipe={slot} models={models} label="全局角色正向触发词" onChange={(patch:Any)=>change({enabled:true,...patch})}/>{issues.length>0&&<div className="inline-error">{issues.map(issue=><p key={issue}>{issue}</p>)}</div>}<footer><span>{slot.enabled?'清空会移除所有节点的角色部分；停用开关会恢复节点原始配置。':'当前停用，运行仍使用各节点原始配置。'}{!hasCharacters&&' 可从全部 LoRA 中手动选择角色。'}</span><button type="button" className="button" disabled={!slot.loras.length&&!slot.prompt&&!slot.promptDefinitions} onClick={()=>change({enabled:true,loras:[],prompt:'',promptDefinitions:''})}><X size={14}/>清空角色</button></footer></div>}
+  </section>;
+}

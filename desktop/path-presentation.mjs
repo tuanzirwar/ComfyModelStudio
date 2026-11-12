@@ -1,0 +1,7 @@
+// Only presentation paths cross IPC; file operations continue using native paths.
+export function createPathPresentation(roots){
+ const pairs=Object.entries({BUILTIN_WORKFLOWS:roots.builtin,TEMP:roots.temp,APPDATA:roots.appData,USERPROFILE:roots.home}).filter(([,v])=>v).map(([key,value])=>({token:`%${key}%`,native:String(value).replace(/[\\/]+$/,''),forms:[String(value).replaceAll('\\','/').replace(/\/+$/,''),String(value).replaceAll('/','\\').replace(/\\+$/,'')]})).sort((a,b)=>b.native.length-a.native.length);
+ const text=value=>{let result=String(value);for(const pair of pairs)for(const form of pair.forms){const escaped=form.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');result=result.replace(new RegExp(escaped+'(?=$|[\\\\/\\s"\\\'])','gi'),pair.token);}return result;};
+ const display=value=>typeof value==='string'?text(value):Array.isArray(value)?value.map(display):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,display(v)])):value;
+ const resolve=(value,key='',pathContext=false)=>{if(typeof value==='string'){if(pathContext||/path|directory|root|dir$/i.test(key)){for(const pair of pairs)if(value===pair.token||value.startsWith(pair.token+'/')||value.startsWith(pair.token+'\\'))return pair.native+value.slice(pair.token.length);}return value;}if(Array.isArray(value))return value.map(v=>resolve(v,key,pathContext));if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,resolve(v,k,pathContext||key==='paths'||k==='paths')]));return value;};return {text,display,resolve};
+}

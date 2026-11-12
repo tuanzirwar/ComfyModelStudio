@@ -1,0 +1,22 @@
+.checkpoint-picker{width:100%;min-width:0}
+.checkpoint-picker-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:52px;padding:14px 16px;color:var(--text,var(--c-dee3ed,#dee3ed));background:var(--c-11141a,#11141a);border:1px solid var(--c-414a59,#414a59);border-radius:10px;text-align:left;font:inherit;cursor:pointer}
+.checkpoint-picker-toggle span{min-width:0;overflow-wrap:anywhere}
+.checkpoint-picker-toggle svg{flex-shrink:0}
+.checkpoint-picker-toggle:hover,.checkpoint-picker-toggle:focus-visible{border-color:var(--c-9fb2d2,#9fb2d2);outline:2px solid var(--c-9fb2d233,#9fb2d233);outline-offset:2px}
+.checkpoint-picker-panel{margin-top:8px;padding:8px;background:var(--c-191d24,#191d24);border:1px solid var(--c-414a59,#414a59);border-radius:12px}
+.checkpoint-picker-search{display:flex;align-items:center;gap:8px;padding:4px 8px;color:var(--c-8da0c2,#8da0c2)}
+.checkpoint-picker-search input{width:100%;min-width:0}
+.checkpoint-picker-options{max-height:260px;overflow-y:auto;overscroll-behavior:contain;display:grid;gap:4px;margin-top:6px}
+.checkpoint-picker-options button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px;text-align:left;background:transparent;border:1px solid transparent;border-radius:8px;color:var(--c-dae0eb,#dae0eb);cursor:pointer;font:inherit}
+.checkpoint-picker-options button:hover,.checkpoint-picker-options button:focus-visible{background:var(--c-2b323f,#2b323f);outline:0;border-color:var(--c-77859d,#77859d)}
+.checkpoint-picker-options button[aria-selected=true]{background:var(--c-313b4b,#313b4b);border-color:var(--c-707e97,#707e97)}
+.checkpoint-picker-options strong{display:block;overflow-wrap:anywhere;font-weight:500}
+.checkpoint-picker-options small{display:block;margin-top:5px;color:var(--c-90a3c3,#90a3c3)}
+.checkpoint-picker-options p{padding:12px;color:var(--c-90a3c3,#90a3c3)}
+.checkpoint-select-menu{padding:7px;border-color:var(--c-4a5466,#4a5466);background:var(--c-181d26,#181d26)}
+.checkpoint-select-menu .studio-select-options{display:flex;flex-direction:column;gap:4px;padding:2px;outline:none}
+.checkpoint-select-menu .studio-select-options>button{flex:none;padding:11px 13px;min-height:58px;border:0;border-radius:7px;font-size:13px;line-height:1.5;box-shadow:none}
+.checkpoint-select-menu .studio-select-options>button[aria-selected=true]{background:var(--c-27303e,#27303e);box-shadow:inset 3px 0 var(--c-a3b5d4,#a3b5d4)}
+.checkpoint-select-menu .studio-select-options>button[data-active=true]:not([aria-selected=true]),.checkpoint-select-menu .studio-select-options>button:hover:not([aria-selected=true]){background:var(--c-232a37,#232a37);box-shadow:inset 0 0 0 1px var(--c-4f5b6f,#4f5b6f)}
+.checkpoint-select-menu .studio-select-options>button:focus{outline:none}
+.checkpoint-select-menu .studio-select-options small{font-size:11px;line-height:1.5;margin-top:4px;color:var(--c-8b97ab,#8b97ab)}
