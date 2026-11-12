@@ -1,3 +1,4 @@
+import {RecipeSharing} from './recipe-sharing.mjs';
 import {createPathPresentation} from './path-presentation.mjs';
 import { RecipeCovers } from './recipe-covers.mjs';
 import { applyCharacterSlot, characterSlotIssues } from './character-slot.mjs';
@@ -41,6 +42,7 @@ app.setPath('userData', dataDir);
 const keyCrypto = credentialCrypto(safeStorage, dataDir);
 protocol.registerSchemesAsPrivileged([{ scheme: 'cms-media', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 let window, store, library, downloads, workflows, execution, outputs, records, albums, modelRemoval, recipeCovers, changeTimer;
+let recipeSharing;
 const tokens = new Map();
 let credentialError = '';
 const changed = () => { if(changeTimer)return;changeTimer=setTimeout(()=>{changeTimer=null;if(window&&!window.isDestroyed())window.webContents.send('studio:changed');},160); };
@@ -89,6 +91,10 @@ async function handle(method, payload = {}) {
     case 'model:reveal': { const model = store.model(payload.id); if (model) shell.showItemInFolder(model.path); return true; }
     case 'recipe:cover-choose': { const result = await dialog.showOpenDialog(window, { title: '选择配方效果展示图', filters: [{ name: '图片', extensions: ['png','jpg','jpeg','webp'] }], properties: ['openFile'] }); return result.canceled ? null : recipeCovers.importFile(result.filePaths[0]); }
     case 'recipe:cover-output': return outputs.exclusive(payload.runId, async () => { const {run,item} = outputs.find(payload.runId,payload.itemId); const file = await outputs.mediaPath(run,item,Number(payload.index)); if (!file) throw new Error('生成图片已删除或暂时不可用'); return recipeCovers.importFile(file); });
+    case 'recipe-share:preview': return recipeSharing.preview(payload.id);
+    case 'recipe-share:export': return recipeSharing.export(payload.token);
+    case 'recipe-share:open': return recipeSharing.open();
+    case 'recipe-share:import': {const recipe=recipeSharing.load(payload);changed();return recipe;}
     case 'recipe:duplicate': { const copy=duplicateRecipe(store,payload.id);changed();return copy; }
     case 'recipe:save': { const recipe = saveRecipe(store, payload); changed(); return recipe; }
     case 'recipe:delete': { store.set('recipes', store.get('recipes', []).filter(r => r.id !== payload.id)); const plan = store.get('plan'); if (plan) store.set('plan', { ...plan, updatedAt: new Date().toISOString(), items: plan.items.filter(i => i.recipeId !== payload.id) }); changed(); return true; }
@@ -164,6 +170,10 @@ else {
     library = new Library(store, api, changed); downloads = new Downloads(store, api, library, changed);
     workflows = new WorkflowService(store, { fetcher: electronFetch(net) }, changed); execution = new ExecutionManager(store, workflows, changed); outputs = new OutputsService(store, execution); records = new RecordsService(store, execution, outputs, { trashItem: file => shell.trashItem(file) }); albums = new AlbumsService(store, execution, outputs, { trashItem: file => shell.trashItem(file) }); modelRemoval = new ModelRemovalService(store, library, downloads, execution, { trashItem: file => shell.trashItem(file) });
     recipeCovers = new RecipeCovers(store,{validateImage:file=>!nativeImage.createFromPath(file).isEmpty()});
+    recipeSharing=new RecipeSharing(store,{
+      openFile:async()=>{const selected=await dialog.showOpenDialog(window,{title:'加载配方',filters:[{name:'模序配方',extensions:['json']}],properties:['openFile']});return selected.canceled?null:selected.filePaths[0];},
+      saveFile:async filename=>{const selected=await dialog.showSaveDialog(window,{title:'分享配方',defaultPath:path.join(app.getPath('downloads'),filename),filters:[{name:'模序配方',extensions:['json']}]});return selected.canceled?null:selected.filePath;}
+    });
     protocol.handle('cms-media', async request => { const u = new URL(request.url); const segments = u.pathname.split('/').filter(Boolean); let file; if (u.hostname === 'recipe-cover') { file = await recipeCovers.media(segments[0]); } else if (u.hostname === 'result') { const run = execution.runs.find(run => run.id === segments[0]); const item = run?.items.find(item => item.id === segments[1]); file = await outputs.mediaPath(run, item, Number(segments[2])); } else if (u.hostname === 'album') { try { file = await albums.media(albums.find(segments[0]), Number(segments[1])); } catch {} } else { file = await allowedMedia(store.model(segments[0])); } return file ? mediaResponse(file) : new Response('', { status: 404 }); });
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
     ipcMain.handle('studio:call', async (event, method, payload) => { if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('非法调用来源'); try { return pathPresentation.display(await handle(method, pathPresentation.resolve(payload))); } catch (error) { throw new Error(pathPresentation.text(cleanError(error))); } });
