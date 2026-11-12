@@ -1,3 +1,4 @@
+import {PathConfiguration} from './path-configuration.mjs';
 import {RecipeSharing} from './recipe-sharing.mjs';
 import {createPathPresentation} from './path-presentation.mjs';
 import { RecipeCovers } from './recipe-covers.mjs';
@@ -42,7 +43,7 @@ app.setPath('userData', dataDir);
 const keyCrypto = credentialCrypto(safeStorage, dataDir);
 protocol.registerSchemesAsPrivileged([{ scheme: 'cms-media', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 let window, store, library, downloads, workflows, execution, outputs, records, albums, modelRemoval, recipeCovers, changeTimer;
-let recipeSharing;
+let recipeSharing,pathConfiguration;
 const tokens = new Map();
 let credentialError = '';
 const changed = () => { if(changeTimer)return;changeTimer=setTimeout(()=>{changeTimer=null;if(window&&!window.isDestroyed())window.webContents.send('studio:changed');},160); };
@@ -60,6 +61,9 @@ async function handle(method, payload = {}) {
     case 'snapshot': return snapshot();
     case 'scan': void library.scan(); return true;
     case 'choose-directory': { const result = await dialog.showOpenDialog(window, { title: String(payload.title || '选择模型存放目录').slice(0, 80), properties: ['openDirectory', 'createDirectory'], defaultPath: payload.path || project }); return result.canceled ? null : result.filePaths[0]; }
+    case 'paths:detect': {const hints=[];if(!payload.root){try{const address=store.get('settings').comfyAddress||'http://127.0.0.1:8188';if(['localhost','127.0.0.1','[::1]'].includes(new URL(address).hostname)){const stats=await workflows.client().request('/system_stats',undefined,1500);const script=stats.system?.argv?.[0];if(typeof script==='string'&&path.isAbsolute(script))hints.push(path.dirname(script));}}catch{}}return pathConfiguration.detect(payload.root,hints);}
+    case 'paths:preview': return pathConfiguration.preview(payload);
+    case 'paths:apply': {if(library.scanning||execution.busy||execution.preparing||execution.runs.some(run=>['running','pausing'].includes(run.status))||downloads.controllers.size)throw new Error('请先暂停下载和生成任务，等待扫描结束后再应用路径配置');const previousRoot=store.get('settings').comfyRoot;const result=await pathConfiguration.apply(payload);if(previousRoot!==result.settings.comfyRoot)workflows.connection={connected:false,message:'目录已更新，请检测 ComfyUI 连接'};changed();void library.scan();return result;}
     case 'settings:root-preview': { if(!path.isAbsolute(String(payload.root||'')))throw new Error('请选择 ComfyUI 安装目录');return {...store.get('settings'),comfyRoot:path.resolve(payload.root),paths:pathsForRoot(path.resolve(payload.root),dataDir)}; }
     case 'settings:update': {
       const old = store.get('settings'); const paths = {};const newRoot=String(payload.comfyRoot??old.comfyRoot??'').trim();if(newRoot&&!path.isAbsolute(newRoot))throw new Error('ComfyUI 安装目录需要绝对路径');
@@ -174,6 +178,7 @@ else {
       openFile:async()=>{const selected=await dialog.showOpenDialog(window,{title:'加载配方',filters:[{name:'模序配方',extensions:['json']}],properties:['openFile']});return selected.canceled?null:selected.filePaths[0];},
       saveFile:async filename=>{const selected=await dialog.showSaveDialog(window,{title:'分享配方',defaultPath:path.join(app.getPath('downloads'),filename),filters:[{name:'模序配方',extensions:['json']}]});return selected.canceled?null:selected.filePath;}
     });
+    pathConfiguration=new PathConfiguration(store,{seeds:[process.env.COMFYUI_ROOT,process.env.PORTABLE_EXECUTABLE_DIR,project,path.dirname(project),path.dirname(path.dirname(project))],builtinDirectory:path.join(here,'data','workflows')});
     protocol.handle('cms-media', async request => { const u = new URL(request.url); const segments = u.pathname.split('/').filter(Boolean); let file; if (u.hostname === 'recipe-cover') { file = await recipeCovers.media(segments[0]); } else if (u.hostname === 'result') { const run = execution.runs.find(run => run.id === segments[0]); const item = run?.items.find(item => item.id === segments[1]); file = await outputs.mediaPath(run, item, Number(segments[2])); } else if (u.hostname === 'album') { try { file = await albums.media(albums.find(segments[0]), Number(segments[1])); } catch {} } else { file = await allowedMedia(store.model(segments[0])); } return file ? mediaResponse(file) : new Response('', { status: 404 }); });
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
     ipcMain.handle('studio:call', async (event, method, payload) => { if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('非法调用来源'); try { return pathPresentation.display(await handle(method, pathPresentation.resolve(payload))); } catch (error) { throw new Error(pathPresentation.text(cleanError(error))); } });

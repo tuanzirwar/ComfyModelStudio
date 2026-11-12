@@ -1,6 +1,6 @@
 {
   "name": "comfy-model-studio",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "private": true,
   "description": "模序 · 本地模型管理、直接下载与配方编排",
   "author": "Local Studio",
@@ -40,7 +40,7 @@
       "assets/**/*"
     ],
     "directories": {
-      "output": "release-0.23.0"
+      "output": "release-0.24.0"
     },
     "win": {
       "target": "dir",
